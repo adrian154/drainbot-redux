@@ -1,0 +1,22 @@
+{
+  "name": "drainbot-redux",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adrian154/drainbot-redux.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adrian154/drainbot-redux/issues"
+  },
+  "homepage": "https://github.com/adrian154/drainbot-redux#readme",
+  "dependencies": {
+    "discord.js": "^14.15.2"
+  }
+}
