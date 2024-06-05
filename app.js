@@ -1,9 +1,13 @@
 const { Client, Events } = require("discord.js");
 const fs = require("fs");
 
+const MESSAGEID_PATH = "data/lastmessage.txt";
+
 const birthdays = fs.readFileSync("data/birthdays.txt", "ascii").split("\n")
-    .map(line => line.trim().split(","))
-    .map(([name, date]) => {
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(line => {
+        const [name, date] = line.split(",")
         const [month, day] = date.split(" ");
         return {
             name, 
@@ -35,17 +39,42 @@ const bot = new Client({intents: []});
 bot.login(process.env.TOKEN);
 
 let channel = null;
+let previousMessage = null;
 
 bot.once(Events.ClientReady, async () => {
     console.log("Logged in");
     channel = await bot.channels.fetch(process.env.CHANNEL_ID);
+    if(fs.existsSync(MESSAGEID_PATH)) {
+        previousMessage = await channel.messages.fetch(fs.readFileSync(MESSAGEID_PATH, "ascii"));
+    }
     runAtMidnight();
 });
 
+const formatBday = ({name, date}) => {
+    const today = new Date();
+    const dateStr = date.toLocaleDateString([], {weekday: "long",month:"long",day:"numeric"});
+    if(date.getMonth() == today.getMonth() && date.getDate() == today.getDate())
+        return `${name} - **TODAY** (${dateStr})`;
+    else
+        return `${name} - ${dateStr}`;
+};
+
 const remind = () => {
     if(channel) {
+
+        // if necessary, delete previous message
+        if(previousMessage) {
+            previousMessage.delete();
+            previousMessage = null;
+        }
+
         const birthdays = getUpcomingBirthdays();
-        channel.send("**UPCOMING BIRTHDAYS**\n" + birthdays.map(({name, date}) => `${name} - ${date.toLocaleDateString([], {weekday: "long",month:"long",day:"numeric"})}`).join("\n"))
+        channel.send("*Upcoming Birthdays* @everyone\n" + birthdays.map(formatBday).join("\n"))
+            .then(message => {
+                previousMessage = message;
+                fs.writeFileSync(MESSAGEID_PATH, message.id, "ascii"); // store message id
+            });
+            
     }
 };
 
