@@ -2,6 +2,7 @@ const { Client, Events } = require("discord.js");
 const fs = require("fs");
 
 const MESSAGEID_PATH = "data/lastmessage.txt";
+const EARLY_WARNING = 24*60*60*1000 * 20;
 
 const birthdays = fs.readFileSync("data/birthdays.txt", "ascii").split("\n")
     .map(line => line.trim())
@@ -15,24 +16,26 @@ const birthdays = fs.readFileSync("data/birthdays.txt", "ascii").split("\n")
         };
     });
 
-const EARLY_WARNING = 24*60*60*1000 * 20;
-
 // get all birthdays within 2 weeks of the current date
 const getUpcomingBirthdays = () => {
     const curDate = new Date();
-    const curFullYear = curDate.getFullYear();
     return birthdays.map(birthday => {
 
-        // handle years properly
-        const dateThisYear = new Date(birthday.date);
-        dateThisYear.setFullYear(curFullYear);
- 
-        const dateNextYear = new Date(birthday.date);
-        dateNextYear.setFullYear(curFullYear + 1);
+        const bdayDate = new Date(birthday.date);
+        bdayDate.setFullYear(curDate.getFullYear());
 
-        return {name: birthday.name, date: curDate > dateThisYear ? dateNextYear : dateThisYear};
+        // if birthday already happened this year, bump to next year
+        if(bdayDate < curDate) {
+            bdayDate.setFullYear(curDate.getFullYear() + 1);
+        }
 
-    }).filter(bday => bday.date - curDate < EARLY_WARNING).sort((a, b) => a.date - b.date);
+        return {
+            name: birthday.name,
+            date: bdayDate,
+            isToday: curDate.getMonth() == bdayDate.getMonth() && curDate.getDate() == bdayDate.getDate()
+        };
+
+    }).filter(bday => bday.isToday || bday.date - curDate < EARLY_WARNING).sort((a, b) => a.date - b.date);
 }
 
 const bot = new Client({intents: []});
@@ -50,10 +53,9 @@ bot.once(Events.ClientReady, async () => {
     runAtMidnight();
 });
 
-const formatBday = ({name, date}) => {
-    const today = new Date();
-    const dateStr = date.toLocaleDateString([], {weekday: "long",month:"long",day:"numeric"});
-    if(date.getMonth() == today.getMonth() && date.getDate() == today.getDate())
+const formatBday = ({name, date, isToday}) => {
+    const dateStr = date.toLocaleDateString([], {weekday: "long", month:"long", day:"numeric"});
+    if(isToday)
         return `${name} - **TODAY** (${dateStr})`;
     else
         return `${name} - ${dateStr}`;
