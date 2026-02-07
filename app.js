@@ -4,17 +4,56 @@ const fs = require("fs");
 const MESSAGEID_PATH = "data/lastmessage.txt";
 const EARLY_WARNING = 24*60*60*1000 * 20;
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const birthdays = fs.readFileSync("data/birthdays.txt", "ascii").split("\n")
     .map(line => line.trim())
     .filter(line => line.length > 0)
     .map(line => {
         const [name, date] = line.split(",")
         const [month, day] = date.split(" ");
+        if(!MONTHS.includes(month) || !(day > 0 && day < 32)) { // bum ass validation
+            throw new Error("syntax error!?"); 
+        }
         return {
             name, 
-            date: new Date(2000, ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"].indexOf(month), day)
+            date: new Date(2000, MONTHS.indexOf(month), day)
         };
     });
+
+// generate an HTML file w/ a list of birthdays
+const birthdaysByMonth = new Array(12).fill().map(() => []);
+birthdays.forEach(birthday => birthdaysByMonth[birthday.date.getMonth()].push(birthday));
+fs.writeFileSync("data/birthdays.html", `<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <title>Birthdays</title>
+        <style>
+            body {
+                max-width: 40em;
+                padding: 1em;
+                margin: auto;
+            }
+
+            #wrapper {
+                display: grid;
+                gap: 0.5em;
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            #wrapper > div {
+                padding: 0.5em;
+                border: 1px solid rgba(0,0,0,50%);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Birthdays</h1>
+        <div id="wrapper">
+            ${birthdaysByMonth.map((bdays, month) => `<div><b>${MONTHS[month]}</b><br>${bdays.sort((a,b) => a.date.getDate() - b.date.getDate()).map(bday => `${bday.date.getDate()}: ${bday.name}<br>`).join("\n")}</div>`).join("\n")};
+        </div>
+    </body>
+</html>`);
 
 // get all birthdays within 2 weeks of the current date
 const getUpcomingBirthdays = () => {
